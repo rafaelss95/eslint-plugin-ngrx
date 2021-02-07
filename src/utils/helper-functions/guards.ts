@@ -53,3 +53,9 @@ export function isImportSpecifier(
 export function isProgram(node: TSESTree.Node): node is TSESTree.Program {
   return node.type === 'Program'
 }
+
+export function isTSParameterProperty(
+  node: TSESTree.Node,
+): node is TSESTree.TSParameterProperty {
+  return node.type === AST_NODE_TYPES.TSParameterProperty
+}

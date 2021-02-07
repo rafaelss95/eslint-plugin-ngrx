@@ -1,6 +1,9 @@
 import { stripIndent } from 'common-tags'
-import { fromFixture } from 'eslint-etc'
-import rule, { ruleName, messageId } from '../../src/rules/no-multiple-stores'
+import rule, {
+  noMultipleStores,
+  noMultipleStoresSuggest,
+  ruleName,
+} from '../../src/rules/no-multiple-stores'
 import { ruleTester } from '../utils'
 
 ruleTester().run(ruleName, rule, {
@@ -8,54 +11,158 @@ ruleTester().run(ruleName, rule, {
     `export class NoCtorOK {}`,
     `
     export class EmptyOk {
-      constructor(){}
+      constructor() {}
     }`,
     `
     export class OneWithVisibilityOk {
-      constructor(private store: Store){}
+      constructor(private store: Store) {}
     }`,
     `
     export class OneWithoutVisibilityOk {
-      constructor(store: Store){}
+      constructor(store: Store) {}
     }`,
     `
     export class OnePlusExtraOk {
-      constructor(private store: Store, data: Service){}
+      constructor(private store: Store, data: Service) {}
     }`,
   ],
   invalid: [
-    fromFixture(
-      stripIndent`
-        export class NotOkNoVisibility {
-          constructor(store: Store, store2: Store){}
-                      ~~~~~~~~~~~~                  [${messageId}]
-                                    ~~~~~~~~~~~~~   [${messageId}]
+    {
+      code: stripIndent`
+        export class NotOk1 {
+          constructor(store: Store, store2: Store) {}
         }`,
-    ),
-    fromFixture(
-      stripIndent`
-        export class NotOkOneVisibility {
-          constructor(store: Store, private store2: Store){}
-                      ~~~~~~~~~~~~                        [${messageId}]
-                                            ~~~~~~~~~~~~~ [${messageId}]
+      errors: [
+        {
+          column: 15,
+          endColumn: 27,
+          line: 2,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk1 {
+                constructor( store2: Store) {}
+              }`,
+            },
+          ],
+        },
+        {
+          column: 29,
+          endColumn: 42,
+          line: 2,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk1 {
+                constructor(store: Store) {}
+              }`,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: stripIndent`
+        export class NotOk2 {
+          constructor(store: Store, private readonly actions$: Actions, private store2: Store, b: B) {}
         }`,
-    ),
-    fromFixture(
-      stripIndent`
-        export class NotOkBothVisibility {
-          constructor(private readonly store: Store, private store2: Store){}
-                                       ~~~~~~~~~~~~                          [${messageId}]
-                                                             ~~~~~~~~~~~~~   [${messageId}]
+      errors: [
+        {
+          column: 15,
+          endColumn: 27,
+          line: 2,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk2 {
+                constructor( private readonly actions$: Actions, private store2: Store, b: B) {}
+              }`,
+            },
+          ],
+        },
+        {
+          column: 73,
+          endColumn: 86,
+          line: 2,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk2 {
+                constructor(store: Store, private readonly actions$: Actions,  b: B) {}
+              }`,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      code: stripIndent`
+        export class NotOk3 {
+          constructor(
+            a: A, store: Store, private readonly actions$: Actions, private store2: Store, private readonly store3: Store,
+          ) {}
         }`,
-    ),
-    fromFixture(
-      stripIndent`
-        export class NotOkMultipleErrors {
-          constructor(private readonly store: Store, private store2: Store, private store3: Store){}
-                                       ~~~~~~~~~~~~                                                [${messageId}]
-                                                             ~~~~~~~~~~~~~                         [${messageId}]
-                                                                                    ~~~~~~~~~~~~~  [${messageId}]
-        }`,
-    ),
+      errors: [
+        {
+          column: 11,
+          endColumn: 23,
+          line: 3,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk3 {
+                constructor(
+                  a: A,  private readonly actions$: Actions, private store2: Store, private readonly store3: Store,
+                ) {}
+              }`,
+            },
+          ],
+        },
+        {
+          column: 69,
+          endColumn: 82,
+          line: 3,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk3 {
+                constructor(
+                  a: A, store: Store, private readonly actions$: Actions,  private readonly store3: Store,
+                ) {}
+              }`,
+            },
+          ],
+        },
+        {
+          column: 101,
+          endColumn: 114,
+          line: 3,
+          messageId: noMultipleStores,
+          suggestions: [
+            {
+              messageId: noMultipleStoresSuggest,
+              output: stripIndent`
+              export class NotOk3 {
+                constructor(
+                  a: A, store: Store, private readonly actions$: Actions, private store2: Store, 
+                ) {}
+              }`,
+            },
+          ],
+        },
+      ],
+    },
   ],
 })
