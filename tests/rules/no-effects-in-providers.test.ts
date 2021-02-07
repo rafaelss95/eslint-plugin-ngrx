@@ -35,14 +35,27 @@ ruleTester().run(ruleName, rule, {
                                                                         ~~~~~~~~~~~~~   [${messageId}]
       })
       export class AppModule {}`,
+      {
+        output: stripIndent`
+        @NgModule({
+          imports: [
+            StoreModule.forFeature('persons', {"foo": "bar"}),
+            EffectsModule.forRoot([RootEffectOne, RootEffectTwo]),
+            EffectsModule.forFeature([FeatEffectOne, FeatEffectTwo]),
+            EffectsModule.forFeature([FeatEffectThree]),
+          ],
+          providers: [  UnRegisteredEffect],
+        })
+        export class AppModule {}`,
+      },
     ),
     fromFixture(
       stripIndent`
       @NgModule({
-        providers: [FeatEffectTwo, UnRegisteredEffect, FeatEffectThree, RootEffectTwo],
-                    ~~~~~~~~~~~~~                                                       [${messageId}]
-                                                       ~~~~~~~~~~~~~~~                  [${messageId}]
-                                                                        ~~~~~~~~~~~~~   [${messageId}]
+        providers: [AEffect, FeatEffectTwo, FeatEffectThree, RootEffectTwo, UnRegisteredEffect],
+                             ~~~~~~~~~~~~~                                   [${messageId}]
+                                            ~~~~~~~~~~~~~~~                  [${messageId}]
+                                                             ~~~~~~~~~~~~~   [${messageId}]
         imports: [
           StoreModule.forFeature('persons', {"foo": "bar"}),
           EffectsModule.forRoot([RootEffectOne, RootEffectTwo]),
@@ -51,6 +64,19 @@ ruleTester().run(ruleName, rule, {
         ],
       })
       export class AppModule {}`,
+      {
+        output: stripIndent`
+        @NgModule({
+          providers: [AEffect,    UnRegisteredEffect],
+          imports: [
+            StoreModule.forFeature('persons', {"foo": "bar"}),
+            EffectsModule.forRoot([RootEffectOne, RootEffectTwo]),
+            EffectsModule.forFeature([FeatEffectOne, FeatEffectTwo]),
+            EffectsModule.forFeature([FeatEffectThree]),
+          ],
+        })
+        export class AppModule {}`,
+      },
     ),
   ],
 })

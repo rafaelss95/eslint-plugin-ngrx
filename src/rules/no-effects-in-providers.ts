@@ -1,10 +1,10 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/experimental-utils'
-
+import { ASTUtils, ESLintUtils } from '@typescript-eslint/experimental-utils'
+import type { TSESLint, TSESTree } from '@typescript-eslint/experimental-utils'
 import {
+  docsUrl,
   ngModuleDecorator,
   ngModuleImports,
   ngModuleProviders,
-  docsUrl,
 } from '../utils'
 
 export const ruleName = 'no-effects-in-providers'
@@ -24,6 +24,7 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
         'An Effect should not be listed as a provider if it is added to the EffectsModule',
       recommended: 'error',
     },
+    fixable: 'code',
     schema: [],
     messages: {
       [messageId]:
@@ -32,26 +33,46 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
   },
   defaultOptions: [],
   create: (context) => {
+    const sourceCode = context.getSourceCode()
     const effectsInProviders: TSESTree.Identifier[] = []
-    const importedEffectsNames: string[] = []
+    const effectsInImports = new Set<string>()
 
     return {
       [ngModuleProviders](node: TSESTree.Identifier) {
         effectsInProviders.push(node)
       },
       [ngModuleImports](node: TSESTree.Identifier) {
-        importedEffectsNames.push(node.name)
+        effectsInImports.add(node.name)
       },
       [`${ngModuleDecorator}:exit`]() {
-        effectsInProviders.forEach((effect: TSESTree.Identifier) => {
-          if (importedEffectsNames.includes(effect.name)) {
+        effectsInProviders
+          .filter(({ name }) => effectsInImports.has(name))
+          .forEach((effect) =>
             context.report({
+              fix: (fixer) =>
+                fixer.removeRange(getRemoveRangeFor(effect, sourceCode)),
               node: effect,
               messageId,
-            })
-          }
-        })
+            }),
+          )
       },
     }
   },
 })
+
+function getRemoveRangeFor(
+  node: TSESTree.Identifier,
+  sourceCode: Readonly<TSESLint.SourceCode>,
+): TSESTree.Range {
+  const previousToken = sourceCode.getTokenBefore(node)
+  const nextToken = sourceCode.getTokenAfter(node)
+  const isCommaPreviousToken =
+    previousToken && ASTUtils.isCommaToken(previousToken)
+  const isCommaNextToken = nextToken && ASTUtils.isCommaToken(nextToken)
+  const isLastProperty = isCommaPreviousToken && !isCommaNextToken
+
+  return [
+    (isLastProperty && previousToken?.range[0]) || node.range[0],
+    (isCommaNextToken && nextToken?.range[1]) || node.range[1],
+  ]
+}
