@@ -1,14 +1,18 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/experimental-utils'
-import { isIdentifier, isLiteral } from '../utils/helper-functions/index'
-
+import { isIdentifier, isLiteral } from 'eslint-etc'
 import { actionReducerMap, docsUrl, storeActionReducerMap } from '../utils'
 
 export const ruleName = 'no-reducer-in-key-names'
 
-export const messageId = 'noReducerInKeyNames'
-export type MessageIds = typeof messageId
+export const noReducerInKeyNames = 'noReducerInKeyNames'
+export const noReducerInKeyNamesSuggest = 'noReducerInKeyNamesSuggest'
+export type MessageIds =
+  | typeof noReducerInKeyNames
+  | typeof noReducerInKeyNamesSuggest
 
 type Options = []
+
+const reducerKeyword = 'reducer'
 
 export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
   name: ruleName,
@@ -16,38 +20,57 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
     type: 'problem',
     docs: {
       category: 'Possible Errors',
-      description: 'Avoid the word "reducer" in the key names',
+      description: `Avoid the word "${reducerKeyword}" in the key names`,
       recommended: 'error',
     },
+    fixable: 'code',
     schema: [],
     messages: {
-      [messageId]:
-        'Avoid the word "reducer" in the key names to better represent the state.',
+      [noReducerInKeyNames]: `Avoid the word "${reducerKeyword}" in the key names to better represent the state.`,
+      [noReducerInKeyNamesSuggest]: `Remove the word "${reducerKeyword}".`,
     },
   },
   defaultOptions: [],
   create: (context) => {
-    const excludedKeyword = 'reducer'
-
-    function hasKeyword(name: string): boolean {
-      return name.toLowerCase().includes(excludedKeyword)
-    }
-
     return {
-      [`${storeActionReducerMap}, ${actionReducerMap}`](
-        node: TSESTree.Property,
-      ) {
-        const key = node.key
-        if (
-          (isLiteral(key) && hasKeyword(key.raw)) ||
-          (isIdentifier(key) && hasKeyword(key.name))
-        ) {
-          context.report({
-            node: key,
-            messageId,
-          })
-        }
+      [`${storeActionReducerMap}, ${actionReducerMap}`]({
+        key,
+      }: TSESTree.Property) {
+        const keyName = getKeyName(key)
+
+        if (!keyName || !containsReducerKeyword(keyName)) return
+
+        context.report({
+          suggest: [
+            {
+              fix: (fixer) =>
+                fixer.replaceText(
+                  key,
+                  keyName.replace(RegExp(reducerKeyword, 'i'), ''),
+                ),
+              messageId: noReducerInKeyNamesSuggest,
+            },
+          ],
+          node: key,
+          messageId: noReducerInKeyNames,
+        })
       },
     }
   },
 })
+
+function getKeyName(key: TSESTree.Expression): string | null {
+  if (isLiteral(key)) {
+    return key.raw
+  }
+
+  if (isIdentifier(key)) {
+    return key.name
+  }
+
+  return null
+}
+
+function containsReducerKeyword(name: string): boolean {
+  return name.toLowerCase().includes(reducerKeyword)
+}
