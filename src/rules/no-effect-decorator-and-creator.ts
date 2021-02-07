@@ -1,11 +1,20 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/experimental-utils'
-
-import { effectCreator, effectDecorator, docsUrl } from '../utils'
+import {
+  docsUrl,
+  effectCreator,
+  effectDecorator,
+  getDecorator,
+  getDecoratorArgument,
+} from '../utils'
 
 export const ruleName = 'no-effect-decorator-and-creator'
 
-export const messageId = 'noEffectDecoratorAndCreator'
-export type MessageIds = typeof messageId
+export const noEffectDecoratorAndCreator = 'noEffectDecoratorAndCreator'
+export const noEffectDecoratorAndCreatorSuggest =
+  'noEffectDecoratorAndCreatorSuggest'
+export type MessageIds =
+  | typeof noEffectDecoratorAndCreator
+  | typeof noEffectDecoratorAndCreatorSuggest
 
 type Options = []
 
@@ -19,33 +28,46 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
         'An Effect should only use the effect creator (`createEffect`) or the effect decorator (`@Effect`), but not both simultaneously',
       recommended: 'error',
     },
+    fixable: 'code',
     schema: [],
     messages: {
-      [messageId]:
+      [noEffectDecoratorAndCreator]:
         'Remove the `@Effect` decorator or the `createEffect` creator function',
+      [noEffectDecoratorAndCreatorSuggest]: 'Remove the `@Effect` decorator',
     },
   },
   defaultOptions: [],
   create: (context) => {
-    const effects: TSESTree.ClassProperty[] = []
-
-    function isDuplicate(effect: TSESTree.ClassProperty) {
-      if (effects.includes(effect)) {
-        context.report({
-          node: effect.key,
-          messageId,
-        })
-      } else {
-        effects.push(effect)
-      }
-    }
-
     return {
-      [effectCreator](node: TSESTree.ClassProperty) {
-        isDuplicate(node)
-      },
-      [effectDecorator](node: TSESTree.Decorator) {
-        isDuplicate(node.parent as TSESTree.ClassProperty)
+      [`${effectCreator}:has(${effectDecorator})`](
+        node: TSESTree.ClassProperty,
+      ) {
+        const decorator = getDecorator(node, 'Effect')
+
+        if (!decorator) return
+
+        const decoratorArgument = getDecoratorArgument(decorator)
+
+        context.report({
+          ...(decoratorArgument
+            ? {
+                // We suggest (instead of fixing) the removal of `@Effect`,
+                // because as the configuration argument was defined, the correction
+                // can cause unexpected behavior, since the settings may differ and to do
+                // this treatment here would be, in addition to costly, not guaranteed.
+                suggest: [
+                  {
+                    fix: (fixer) => fixer.remove(decorator),
+                    messageId: noEffectDecoratorAndCreatorSuggest,
+                  },
+                ],
+              }
+            : {
+                fix: (fixer) => fixer.remove(decorator),
+              }),
+          node: node.key,
+          messageId: noEffectDecoratorAndCreator,
+        })
       },
     }
   },

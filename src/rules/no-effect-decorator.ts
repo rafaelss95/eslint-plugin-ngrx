@@ -1,6 +1,6 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/experimental-utils'
 
-import { effectDecorator, docsUrl } from '../utils'
+import { classPropertyWithEffectDecorator, docsUrl } from '../utils'
 
 export const ruleName = 'no-effect-decorator'
 
@@ -26,7 +26,7 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
   defaultOptions: [],
   create: (context) => {
     return {
-      [effectDecorator](node: TSESTree.TSTypeReference) {
+      [classPropertyWithEffectDecorator](node: TSESTree.Decorator) {
         context.report({
           node,
           messageId,

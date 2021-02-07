@@ -1,4 +1,5 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/experimental-utils'
+import { isCallExpression, isIdentifier, isObjectExpression } from 'eslint-etc'
 import {
   isClassDeclaration,
   isImportDeclaration,
@@ -75,4 +76,48 @@ export function hasImport(
   return specifiers
     .filter(isImportSpecifier)
     .some(({ imported: { name } }) => name === importSpecifier)
+}
+
+export function getDecoratorName({
+  expression,
+}: TSESTree.Decorator): string | undefined {
+  if (isIdentifier(expression)) {
+    return expression.name
+  }
+
+  if (isCallExpression(expression) && isIdentifier(expression.callee)) {
+    return expression.callee.name
+  }
+
+  return undefined
+}
+
+export function getDecorator(
+  {
+    decorators,
+  }:
+    | TSESTree.ClassProperty
+    | TSESTree.ClassDeclaration
+    | TSESTree.MethodDefinition,
+  decoratorName: string,
+): TSESTree.Decorator | undefined {
+  return decorators?.find(
+    (decorator) =>
+      isCallExpression(decorator.expression) &&
+      getDecoratorName(decorator) === decoratorName,
+  )
+}
+
+export function getDecoratorArgument({
+  expression,
+}: TSESTree.Decorator): TSESTree.ObjectExpression | undefined {
+  if (!isCallExpression(expression) || expression.arguments.length === 0) {
+    return undefined
+  }
+
+  const {
+    arguments: { 0: firstArgument },
+  } = expression
+
+  return isObjectExpression(firstArgument) ? firstArgument : undefined
 }
