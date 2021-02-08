@@ -33,18 +33,19 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
   defaultOptions: [],
   create: (context) => {
     return {
-      [`CallExpression[callee.name='combineLatest'][arguments.length>1]`](
-        node: TSESTree.CallExpression,
-      ) {
-        const [, ...violations] = node.arguments.filter(
-          (p) =>
-            isCallExpression(p) &&
-            isMemberExpression(p.callee) &&
-            isMemberExpression(p.callee.object) &&
-            isIdentifier(p.callee.object.property) &&
-            p.callee.object.property.name === 'store' &&
-            isIdentifier(p.callee.property) &&
-            p.callee.property.name === 'select',
+      [`ClassProperty CallExpression[callee.name='combineLatest'][arguments.length > 1]`]({
+        arguments: operators,
+      }: TSESTree.CallExpression) {
+        const [, ...violations] = operators.filter(
+          (operator) =>
+            isCallExpression(operator) &&
+            isMemberExpression(operator.callee) &&
+            isMemberExpression(operator.callee.object) &&
+            isIdentifier(operator.callee.object.property) &&
+            isIdentifier(operator.callee.property) &&
+            (operator.callee.property.name === 'select' ||
+              (operator.callee.property.name === 'pipe' &&
+                operator.arguments.some(isSelectOperator))),
         )
 
         for (const node of violations) {
@@ -57,3 +58,11 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
     }
   },
 })
+
+function isSelectOperator(operator: TSESTree.Expression) {
+  return (
+    isCallExpression(operator) &&
+    isIdentifier(operator.callee) &&
+    operator.callee.name === 'select'
+  )
+}
