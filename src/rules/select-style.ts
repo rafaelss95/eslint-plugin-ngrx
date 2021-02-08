@@ -1,10 +1,9 @@
 import { ESLintUtils, TSESTree } from '@typescript-eslint/experimental-utils'
-
-import { docsUrl, pipeableSelect, storeSelect } from '../utils'
+import { docsUrl, pipeableSelect } from '../utils'
 
 export const ruleName = 'select-style'
 
-export const methodSelectMessageId = 'storeSelect'
+export const methodSelectMessageId = 'methodSelect'
 export const operatorSelectMessageId = 'operatorSelect'
 
 export type MessageIds =
@@ -46,7 +45,7 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
   defaultOptions: [{ mode: METHOD }],
   create: (context, [{ mode }]) => {
     return {
-      [pipeableSelect](node: TSESTree.CallExpression) {
+      [`ClassProperty ${pipeableSelect}`](node: TSESTree.CallExpression) {
         if (mode === METHOD) {
           context.report({
             node,
@@ -54,7 +53,9 @@ export default ESLintUtils.RuleCreator(docsUrl)<Options, MessageIds>({
           })
         }
       },
-      [storeSelect](node: TSESTree.Identifier) {
+      [`ClassProperty CallExpression MemberExpression > Identifier[name='select']`](
+        node: TSESTree.Identifier,
+      ) {
         if (mode === OPERATOR) {
           context.report({
             node,
